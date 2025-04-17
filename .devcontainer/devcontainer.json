@@ -1,0 +1,35 @@
+{
+  "name": "ROS 2 Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "USERNAME": "hadibeydoun"
+    }
+  },
+  "workspaceFolder": "/home/ws",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/ws,type=bind",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "twxs.cmake",
+        "ms-iot.vscode-ros"
+      ]
+    }
+  },
+
+  "containerEnv": {
+    "ROS_DOMAIN_ID": "42",
+    "SERIAL_PORT": "host.docker.internal:5000"
+  },
+
+  "runArgs": [
+    "--privileged",
+    "-e",
+    "DISPLAY=host.docker.internal:0",
+    "--network=host",
+    "--device=/dev/cu.usbmodem3101"
+  ],
+  "postCreateCommand": "sudo rosdep update && sudo rosdep install --from-paths src --ignore-src -y"
+}
+
