@@ -1,5 +1,5 @@
 #!/bin/bash
 export LD_LIBRARY_PATH=/opt/ros/humble/lib:$LD_LIBRARY_PATH
-source /opt/ros/humble/setup.bash
-source /home/ws/ros2_ws/install/setup.bash
+source /opt/ros/jazzy/setup.bash
+source "/home/parallels/Desktop/Parallels Shared Folders/Home/Documents/Monolith/ros2_ws/install/local_setup.bash"
 exec cmake "$@"

@@ -1,12 +1,11 @@
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+#include <iostream>
+#include <fcntl.h>
+#include <termios.h>
 #include <unistd.h>
 #include <cstring>
-#include <iostream>
+#include <cstdint>
 
-// #include "/home/ws/Shared/Include/WiskerData.h"
-struct __attribute__ ((packed)) ControllerData {
+struct __attribute__((packed)) ControllerData {
     int16_t x_pos;
     int16_t y_pos;
 
@@ -18,68 +17,76 @@ struct __attribute__ ((packed)) ControllerData {
     bool right;
 };
 
-int open_serial_tcp(const char* hostname, int port) {
-    std::cout << "[DEBUG] Resolving: " << hostname << ":" << port << "\n";
-
-    struct addrinfo hints{}, *res;
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    int err = getaddrinfo(hostname, std::to_string(port).c_str(), &hints, &res);
-    if (err != 0) {
-        std::cerr << "[ERROR] getaddrinfo: " << gai_strerror(err) << "\n";
-        return -1;
-    }
-
-    int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (sock < 0) {
-        perror("socket");
-        freeaddrinfo(res);
-        return -1;
-    }
-
-    if (connect(sock, res->ai_addr, res->ai_addrlen) < 0) {
-        perror("connect");
-        close(sock);
-        freeaddrinfo(res);
-        return -1;
-    }
-
-    freeaddrinfo(res);
-    std::cout << "[DEBUG] Connected successfully!\n";
-    return sock;
-}
+constexpr uint8_t SYNC_BYTE = 0xAA;
 
 int main() {
-    const char* hostname = "host.docker.internal";
-    int port = 5001;
+    struct termios tio;
+    struct termios stdio;
+    struct termios old_stdio;
 
-    int sock_fd = open_serial_tcp(hostname, port);
-    if (sock_fd < 0) return 1;
+    int tty_fd;
+    unsigned char c = 'D';
 
-    std::cout << "Connected. Reading WiskerData structs...\n";
+    // Terminal config
+    tcgetattr(STDOUT_FILENO, &old_stdio);
+    memset(&stdio, 0, sizeof(stdio));
+    stdio.c_lflag |= ECHO;
+    stdio.c_iflag |= ICRNL;
+    stdio.c_oflag |= (OPOST | ONLCR);
+    tcsetattr(STDOUT_FILENO, TCSAFLUSH, &stdio);
+    fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+
+    // Serial config
+    tty_fd = open("/dev/ttyACM0", O_RDWR | O_NONBLOCK);
+    if (tty_fd < 0) {
+        perror("open");
+        return 1;
+    }
+
+    tcgetattr(tty_fd, &tio);
+    tio.c_cflag &= ~CSIZE;
+    tio.c_cflag |= CS8 | CREAD | CLOCAL;
+    tio.c_cflag &= ~PARENB;
+    tio.c_cflag &= ~CSTOPB;
+    tio.c_lflag = 0;
+    cfsetospeed(&tio, B115200);
+    cfsetispeed(&tio, B115200);
+    tcsetattr(tty_fd, TCSAFLUSH, &tio);
+
+    std::cout << "Serial port opened. Waiting for sync byte...\n";
 
     while (true) {
-        ControllerData data{};
-        ssize_t n = read(sock_fd, &data, 1);
-        std::cout << n << " bytes read\n";
-        if (true) {
-        std::cout << "x_pos: " << data.x_pos
-          << ", y_pos: " << data.y_pos
-          << ", control: " << data.control
-          << ", up: " << data.up
-          << ", down: " << data.down
-          << ", left: " << data.left
-          << ", right: " << data.right
-          << std::endl;
+        uint8_t byte;
+        ssize_t n = read(tty_fd, &byte, 1);
+        if (n == 1) {
+            if (byte == SYNC_BYTE) {
+                ControllerData data;
+                size_t received = 0;
+                uint8_t* ptr = reinterpret_cast<uint8_t*>(&data);
 
+                while (received < sizeof(ControllerData)) {
+                    ssize_t chunk = read(tty_fd, ptr + received, sizeof(ControllerData) - received);
+                    if (chunk > 0) {
+                        received += chunk;
+                    }
+                }
 
+                std::cout << "Controller: { "
+                          << "x: " << data.x_pos
+                          << ", y: " << data.y_pos
+                          << ", ctrl: " << data.control
+                          << ", ↑: " << data.up
+                          << ", ↓: " << data.down
+                          << ", ←: " << data.left
+                          << ", →: " << data.right
+                          << " }\n";
+            }
         } else {
-            usleep(1000); // throttle if nothing yet
+            usleep(100); // idle wait
         }
     }
 
-    close(sock_fd);
+    close(tty_fd);
+    tcsetattr(STDOUT_FILENO, TCSANOW, &old_stdio);
     return 0;
 }
-x``

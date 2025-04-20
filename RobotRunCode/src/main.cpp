@@ -1,90 +1,128 @@
-
 ///////////////////////////////////////////////////////////////////////////////////
-//Robot_Dive.INO
-//Written By: Ricardo Tapia Vargas
+// Robot_Dive.INO
+// Written By: Ricardo Tapia Vargas
 //
-//Team: Monsters Inc.
+// Team: Monsters Inc.
 //
 ///////////////////////////////////////////////////////////////////////////////////
 
 
-#include "Romi_Motor_Power.h"
 /* Defines pin configuration of robot */
+#include <RobotIO.h>
 #include "RSLK_Pins.h"
 #include "SimpleRSLK.h"
-#include <WiskerData.h>
 
 Romi_Motor_Power left_motor;
 Romi_Motor_Power right_motor;
-int motorSpeed = 0;
+
+unsigned long last_wisker_send = 0;  // NEW: timestamp tracker
+const unsigned long WISKER_INTERVAL = 200; // ms
+
+
+int motorSpeed = 40;
 int badDriver = 0;
 
-WiskerData b_wisker_data{};
+WiskerDataUnion b_wisker_data{};
+WiskerDataUnion b_old_wisker_data{};
+uint16_t c_wisker_triggers = 0;
+
+RobotControlUnion b_robot_control{};
+
 
 void read_wisker_data();
+void write_controller_data();
 
 void setup() {
-  Serial.begin(115200);
+    Serial.begin(115200);
 
-  left_motor.begin(MOTOR_L_SLP_PIN,
-           MOTOR_L_DIR_PIN,
-           MOTOR_L_PWM_PIN);
+    setupRSLK();
 
-  right_motor.begin(MOTOR_R_SLP_PIN,
-            MOTOR_R_DIR_PIN,
-            MOTOR_R_PWM_PIN);
 
-  pinMode(BP_SW_PIN_0,INPUT_PULLUP);
-  pinMode(BP_SW_PIN_1,INPUT_PULLUP);
-  pinMode(BP_SW_PIN_2,INPUT_PULLUP);
-  pinMode(BP_SW_PIN_3,INPUT_PULLUP);
-  pinMode(BP_SW_PIN_4,INPUT_PULLUP);
-  pinMode(BP_SW_PIN_5,INPUT_PULLUP);
+    left_motor.begin(MOTOR_L_SLP_PIN,
+         MOTOR_L_DIR_PIN,
+         MOTOR_L_PWM_PIN);
 
-  /* Left button on Launchpad */
-  pinMode(LP_LEFT_BTN, INPUT_PULLUP);
-  /* Red led in rgb led */
-  pinMode(RED_LED,OUTPUT);
-  Serial.println("Wilbur reporting for duty!");
-  Serial.println("Use WASD to move and H to Halt!");
+    right_motor.begin(MOTOR_R_SLP_PIN,
+              MOTOR_R_DIR_PIN,
+              MOTOR_R_PWM_PIN);
 
-   left_motor.setSpeed(0);
-   right_motor.setSpeed(0);
 
- 
-}
 
-void loop() {
+    pinMode(BP_SW_PIN_0, INPUT_PULLUP);
+    pinMode(BP_SW_PIN_1, INPUT_PULLUP);
+    pinMode(BP_SW_PIN_2, INPUT_PULLUP);
+    pinMode(BP_SW_PIN_3, INPUT_PULLUP);
+    pinMode(BP_SW_PIN_4, INPUT_PULLUP);
+    pinMode(BP_SW_PIN_5, INPUT_PULLUP);
+
+    /* Left button on Launchpad */
+    pinMode(LP_LEFT_BTN, INPUT_PULLUP);
+    /* Red led in rgb led */
+    pinMode(RED_LED, OUTPUT);
+
+    digitalWrite(RED_LED, HIGH);
+
     left_motor.enableMotor();
     right_motor.enableMotor();
 
-    read_wisker_data();
+    left_motor.directionForward();
+    right_motor.directionForward();
 
-    Serial.write(reinterpret_cast<uint8_t*>(&b_wisker_data), sizeof(WiskerData));
-
-    // print the bump switch data
-    // Serial.print("Wisker 1: ");
-    // Serial.print(b_wisker_data.w1);
-    // Serial.print(" Wisker 2: ");
-    // Serial.print(b_wisker_data.w2);
-    // Serial.print(" Wisker 3: ");
-    // Serial.print(b_wisker_data.w3);
-    // Serial.print(" Wisker 4: ");
-    // Serial.print(b_wisker_data.w4);
-    // Serial.print(" Wisker 5: ");
-    // Serial.print(b_wisker_data.w5);
-    // Serial.print(" Wisker 6: ");
-    // Serial.print(b_wisker_data.w6);
+    left_motor.setSpeed(motorSpeed);
+    right_motor.setSpeed(motorSpeed);
 
 
-    delay(300); // Update ~3 times per second
+
+
+
+    // delay(2000);  // Drive backward for 2 seconds
+
+
+}
+
+void loop() {
+    // Handle incoming motor control
+    if (Serial.available() > 0) {
+        const uint8_t in_char = Serial.read();
+        if (in_char == SYNC_BYTE) {
+            Serial.readBytes(reinterpret_cast<char *>(&b_robot_control.data), sizeof(b_robot_control.data));
+            write_controller_data();
+        }
+    }
+
+    // Check if it's time to send wisker data
+    unsigned long now = millis();
+    if (now - last_wisker_send >= WISKER_INTERVAL) {
+        last_wisker_send = now;
+
+        read_wisker_data();
+        Serial.write(SYNC_BYTE); // sync write byte
+        Serial.write(b_wisker_data.data, sizeof(b_old_wisker_data.data));
+    }
 }
 
 void read_wisker_data() {
-    b_wisker_data.w1 = digitalRead(BP_SW_PIN_0);
-    b_wisker_data.w2 = digitalRead(BP_SW_PIN_1);
-    b_wisker_data.w3 = digitalRead(BP_SW_PIN_2);
-    b_wisker_data.w4 = digitalRead(BP_SW_PIN_3);
-    b_wisker_data.w5 = digitalRead(BP_SW_PIN_4);
-    b_wisker_data.w6 = digitalRead(BP_SW_PIN_5);
+    b_old_wisker_data = b_wisker_data;
+    b_wisker_data.wisker_data.w1 = digitalRead(BP_SW_PIN_0);
+    b_wisker_data.wisker_data.w2 = digitalRead(BP_SW_PIN_1);
+    b_wisker_data.wisker_data.w3 = digitalRead(BP_SW_PIN_2);
+    b_wisker_data.wisker_data.w4 = digitalRead(BP_SW_PIN_3);
+    b_wisker_data.wisker_data.w5 = digitalRead(BP_SW_PIN_4);
+    b_wisker_data.wisker_data.w6 = digitalRead(BP_SW_PIN_5);
+}
+
+void reset_wisker_count() {
+    c_wisker_triggers = 0;
+}
+
+void write_controller_data() {
+    b_robot_control.robot_control.left_motor_dir ?
+        left_motor.directionBackward() : left_motor.directionForward();
+
+    b_robot_control.robot_control.right_motor_dir ?
+        right_motor.directionBackward() : right_motor.directionForward();
+
+    left_motor.setSpeed(b_robot_control.robot_control.left_motor_speed);
+    right_motor.setSpeed(b_robot_control.robot_control.right_motor_speed);
+
 }

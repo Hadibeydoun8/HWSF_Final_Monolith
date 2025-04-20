@@ -1,5 +1,5 @@
 #include <Arduino.h>
-// #include <WiskerData.h>
+#include <RobotIO.h>
 
 #define PIN_BUTTON_SELECT 2
 
@@ -12,18 +12,6 @@
 #define PIN_X_JOYSTICK A0
 #define PIN_Y_JOYSTICK A1
 
-
-struct __attribute__ ((packed)) ControllerData {
-    int16_t x_pos;
-    int16_t y_pos;
-
-    bool control;
-
-    bool up;
-    bool down;
-    bool left;
-    bool right;
-};
 
 ControllerData b_controller_data{};
 
@@ -40,8 +28,6 @@ void setup() {
 
     pinMode(PIN_X_JOYSTICK,INPUT);
     pinMode(PIN_Y_JOYSTICK,INPUT);
-
-
 }
 
 void loop() {
@@ -49,26 +35,6 @@ void loop() {
 
     Serial.write(0xAA); // sync byte
     Serial.write(reinterpret_cast<uint8_t *>(&b_controller_data), sizeof(ControllerData));
-
-    // Serial.print("x_pos: ");
-    // Serial.print(b_controller_data.x_pos);
-    // Serial.print(", y_pos: ");
-    // Serial.print(b_controller_data.y_pos);
-    //
-    // Serial.print(", control: ");
-    // Serial.print(b_controller_data.control);
-    //
-    // Serial.print(", up: ");
-    // Serial.print(b_controller_data.up);
-    // Serial.print(", down: ");
-    // Serial.print(b_controller_data.down);
-    // Serial.print(", left: ");
-    // Serial.print(b_controller_data.left);
-    // Serial.print(", right: ");
-    // Serial.println(b_controller_data.right);
-    // // Serial.write(reinterpret_cast<uint8_t *>(&b_wisker_data), sizeof(WiskerData));
-    //
-    //
 
     delay(300); // Update ~3 times per second
 }
