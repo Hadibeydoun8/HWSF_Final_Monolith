@@ -25,7 +25,7 @@ struct __attribute__((packed)) WiskerData {
   bool w4;
   bool w5;
   bool w6;
-  int16_t wisker_count; // Counter of unique triggers (signed 16-bit for overflow safety)
+  int16_t wisker_count; // Counter of the number of wiskers pressed since the last reset
 };
 
 //---------------------------------------------
