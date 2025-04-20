@@ -108,11 +108,12 @@ private:
             msg.w4 = data.wisker_data.w4;
             msg.w5 = data.wisker_data.w5;
             msg.w6 = data.wisker_data.w6;
+            msg.wisker_count = data.wisker_data.wisker_count;
 
             publisher_->publish(msg);
 
-            RCLCPP_INFO(this->get_logger(), "Published WiskerData: [%d %d %d %d %d %d]",
-                        msg.w1, msg.w2, msg.w3, msg.w4, msg.w5, msg.w6);
+            RCLCPP_INFO(this->get_logger(), "Published WiskerData: [%d %d %d %d %d %d %d]",
+                        msg.w1, msg.w2, msg.w3, msg.w4, msg.w5, msg.w6, msg.wisker_count);
         } else {
             RCLCPP_WARN(this->get_logger(), "Failed to read full WiskerData. Got %zd bytes", r);
         }

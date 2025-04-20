@@ -1,5 +1,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <robot_interfaces/msg/robot_control.hpp>
+#include <robot_interfaces/msg/wisker_data.hpp>
 #include <RobotIO.h>
 
 #include <fcntl.h>
@@ -15,6 +16,12 @@ public:
         : Node("motor_publisher_node") {
 
         publisher_ = this->create_publisher<robot_interfaces::msg::RobotControl>("motor_output", 10);
+
+        // Subscribe to whisker data
+        wisker_sub_ = this->create_subscription<robot_interfaces::msg::WiskerData>(
+            "wisker_data", 10,
+            std::bind(&MotorPublisherNode::wisker_callback, this, std::placeholders::_1)
+        );
 
         tty_fd_ = open("/dev/ttyACM0", O_RDWR | O_NONBLOCK);
         if (tty_fd_ < 0) {
@@ -46,6 +53,9 @@ public:
 
 private:
     ControllerDataUnion u_controller_d{};
+    bool dance_mode_ = false;
+    robot_interfaces::msg::WiskerData last_wisker_;
+    rclcpp::Subscription<robot_interfaces::msg::WiskerData>::SharedPtr wisker_sub_;
 
     int32_t map_joystick_to_speed(int16_t val, bool &dir, bool flip) {
         constexpr int CENTER = 512;
@@ -78,6 +88,21 @@ private:
 
                 robot_interfaces::msg::RobotControl msg;
 
+                // Check if dance mode should be activated
+                if (!dance_mode_ && last_wisker_.wisker_count >= 10) {
+                    dance_mode_ = true;
+                    RCLCPP_INFO(this->get_logger(), "DANCE MODE ACTIVATED! Wisker count = %d", last_wisker_.wisker_count);
+                }
+
+                // Check if dance mode should be deactivated via joystick button
+                if (dance_mode_ && input.control) {
+                    dance_mode_ = false;
+                    RCLCPP_INFO(this->get_logger(), "Dance mode deactivated via control button.");
+                }
+
+                RCLCPP_INFO(this->get_logger(), "Whisker Count: %d", last_wisker_.wisker_count);
+
+
                 // New logic: y_pos = forward/back, x_pos = turning
                 bool forward_dir, turn_dir;
                 int32_t forward = map_joystick_to_speed(input.y_pos, forward_dir, true);  // 1024 = FWD
@@ -98,7 +123,7 @@ private:
                 msg.left_dir = left >= 0 ? forward_dir : !forward_dir;
                 msg.right_dir = right >= 0 ? forward_dir : !forward_dir;
 
-                msg.dance_mode = input.control;
+                msg.dance_mode = dance_mode_;
 
                 publisher_->publish(msg);
 
@@ -111,6 +136,10 @@ private:
                     msg.dance_mode ? "true" : "false");
             }
         }
+    }
+
+    void wisker_callback(const robot_interfaces::msg::WiskerData::SharedPtr msg) {
+        last_wisker_ = *msg;
     }
 
     rclcpp::Publisher<robot_interfaces::msg::RobotControl>::SharedPtr publisher_;
