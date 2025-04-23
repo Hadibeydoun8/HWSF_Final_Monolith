@@ -87,33 +87,42 @@ private:
 
     void read_wisker_data() {
         uint8_t byte;
-        // Keep reading one byte at a time until we find the sync byte
+
+        // Wait for sync byte
         while (read(tty_fd_, &byte, 1) == 1) {
-            if (byte == SYNC_BYTE) break;              // Found start of whisker packet
+            if (byte == SYNC_BYTE) break;
         }
 
+        // Attempt to read the full struct
         WiskerDataUnion data{};
-        ssize_t r = read(tty_fd_, &data.data, sizeof(WiskerData));  // Read full struct
+        size_t total = 0;
+        const size_t expected = sizeof(WiskerData);
 
-        if (r == sizeof(WiskerData) or true) {
-            // Construct and publish ROS message from unpacked data
-            robot_interfaces::msg::WiskerData msg;
-            msg.w1 = data.wisker_data.w1;
-            msg.w2 = data.wisker_data.w2;
-            msg.w3 = data.wisker_data.w3;
-            msg.w4 = data.wisker_data.w4;
-            msg.w5 = data.wisker_data.w5;
-            msg.w6 = data.wisker_data.w6;
-            msg.wisker_count = data.wisker_data.wisker_count;
-
-            publisher_->publish(msg);  // Push data to ROS network
-
-            RCLCPP_INFO(this->get_logger(), "Published WiskerData: [%d %d %d %d %d %d %d]",
-                        msg.w1, msg.w2, msg.w3, msg.w4, msg.w5, msg.w6, msg.wisker_count);
-        } else {
-            RCLCPP_WARN(this->get_logger(), "Failed to read full WiskerData. Got %zd bytes", r);
+        while (total < expected) {
+            ssize_t n = read(tty_fd_, data.data + total, expected - total);
+            if (n < 0) {
+                RCLCPP_ERROR(this->get_logger(), "Serial read failed");
+                return;
+            }
+            total += static_cast<size_t>(n);
         }
+
+        // Build ROS message and publish
+        robot_interfaces::msg::WiskerData msg;
+        msg.w1 = data.wisker_data.w1;
+        msg.w2 = data.wisker_data.w2;
+        msg.w3 = data.wisker_data.w3;
+        msg.w4 = data.wisker_data.w4;
+        msg.w5 = data.wisker_data.w5;
+        msg.w6 = data.wisker_data.w6;
+        msg.wisker_count = data.wisker_data.wisker_count;
+
+        publisher_->publish(msg);
+
+        RCLCPP_INFO(this->get_logger(), "Published WiskerData: [%d %d %d %d %d %d %d]",
+                    msg.w1, msg.w2, msg.w3, msg.w4, msg.w5, msg.w6, msg.wisker_count);
     }
+
 
     robot_interfaces::msg::RobotControl last_msg_;  // Last received motor command
     bool new_control_available_ = false;            // Flag to control sending
