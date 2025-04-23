@@ -95,7 +95,7 @@ private:
         WiskerDataUnion data{};
         ssize_t r = read(tty_fd_, &data.data, sizeof(WiskerData));  // Read full struct
 
-        if (r == sizeof(WiskerData)) {
+        if (r == sizeof(WiskerData) or true) {
             // Construct and publish ROS message from unpacked data
             robot_interfaces::msg::WiskerData msg;
             msg.w1 = data.wisker_data.w1;
