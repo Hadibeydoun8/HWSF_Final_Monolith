@@ -27,7 +27,7 @@ public:
         );
 
         // Open serial port to microcontroller
-        tty_fd_ = open("/dev/ttyACM0", O_RDWR);  // Non-blocking read/write
+        tty_fd_ = open("/dev/ttyACM0", O_RDWR | O_NONBLOCK);  // Non-blocking read/write
         if (tty_fd_ < 0) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open serial port.");
             throw std::runtime_error("Failed to open serial port.");
