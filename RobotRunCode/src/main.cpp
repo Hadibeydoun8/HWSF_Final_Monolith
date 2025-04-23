@@ -113,6 +113,7 @@ void loop() {
 
         Serial.write(SYNC_BYTE);                                 // Frame header
         Serial.write(b_wisker_data.data, sizeof(b_old_wisker_data.data));  // Send binary struct
+        Serial.flush();
     }
 }
 

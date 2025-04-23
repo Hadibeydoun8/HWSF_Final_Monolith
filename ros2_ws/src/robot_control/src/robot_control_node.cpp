@@ -51,7 +51,7 @@ public:
 
         // Timer for polling joystick input at 50ms interval
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(50),
+            std::chrono::milliseconds(100),
             [this] { poll_serial(); });
     }
 
