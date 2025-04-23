@@ -13,10 +13,8 @@ Romi_Motor_Power left_motor;
 Romi_Motor_Power right_motor;
 
 unsigned long last_wisker_send = 0;         // Timestamp of last whisker data send
-const unsigned long WISKER_INTERVAL = 200;  // Send whisker data every 200 ms
+constexpr unsigned long WISKER_INTERVAL = 200;  // Send whisker data every 200 ms
 
-int motorSpeed = 40;
-int badDriver = 0;
 
 WiskerDataUnion b_wisker_data{};            // Current whisker state
 WiskerDataUnion b_old_wisker_data{};        // Last whisker state for edge detection
@@ -27,6 +25,8 @@ RobotControlUnion b_robot_control{};        // Holds most recent motor command r
 bool previous_dance_state = false;          // Tracks when dance mode was last active
 
 void dance_mode();                          // Forward declaration
+void rouge_mode();                          // Forward declaration
+
 
 void read_wisker_data();
 void write_controller_data();
@@ -68,22 +68,15 @@ void loop() {
         const uint8_t in_char = Serial.read();
         if (in_char == SYNC_BYTE) {  // Check for framing byte
             Serial.readBytes(reinterpret_cast<char *>(&b_robot_control.data), sizeof(b_robot_control.data));
-
             // Enter dance mode if newly triggered
-            if (b_robot_control.robot_control.dance_mode && !previous_dance_state) {
+            if (b_robot_control.robot_control.rouge_mode) {
+                rouge_mode();
+            }
+            else if (b_robot_control.robot_control.dance_mode) {
                 dance_mode();
-                previous_dance_state = true;
             }
-
-            // Exit dance mode if just disabled
-            if (!b_robot_control.robot_control.dance_mode && previous_dance_state) {
-                previous_dance_state = false;
-                left_motor.setSpeed(0);
-                right_motor.setSpeed(0);
-            }
-
             // Update motors only when not dancing
-            if (!b_robot_control.robot_control.dance_mode) {
+            else {
                 write_controller_data();
             }
         }
@@ -166,6 +159,42 @@ void dance_mode() {
     left_motor.setSpeed(70);
     right_motor.setSpeed(70);
 }
+
+void rouge_mode() {
+    c_wisker_triggers = 0;  // Reset trigger counter when entering rouge mode
+    unsigned long t = millis() % 3000;
+
+    if (t < 400) {
+        // Quick spin right
+        left_motor.directionForward();
+        right_motor.directionBackward();
+        left_motor.setSpeed(100);
+        right_motor.setSpeed(100);
+    } else if (t < 1000) {
+        // Sudden dash forward
+        left_motor.directionForward();
+        right_motor.directionForward();
+        left_motor.setSpeed(120);
+        right_motor.setSpeed(120);
+    } else if (t < 1600) {
+        // Freeze—dramatic pause
+        left_motor.setSpeed(0);
+        right_motor.setSpeed(0);
+    } else if (t < 2200) {
+        // Sharp reverse burst
+        left_motor.directionBackward();
+        right_motor.directionBackward();
+        left_motor.setSpeed(90);
+        right_motor.setSpeed(90);
+    } else {
+        // Wiggle left
+        left_motor.directionBackward();
+        right_motor.directionForward();
+        left_motor.setSpeed(80);
+        right_motor.setSpeed(80);
+    }
+}
+
 
 void write_controller_data() {
     // Set direction based on boolean field from ROS

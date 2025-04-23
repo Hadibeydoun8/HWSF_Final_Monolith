@@ -76,6 +76,7 @@ private:
         ctrl.robot_control.left_motor_dir = last_msg_.left_dir;
         ctrl.robot_control.right_motor_dir = last_msg_.right_dir;
         ctrl.robot_control.dance_mode = last_msg_.dance_mode;
+        ctrl.robot_control.rouge_mode = last_msg_.rouge_mode;
 
         uint8_t sync = SYNC_BYTE;                      // Custom sync byte for framing
         write(tty_fd_, &sync, 1);                      // Write sync byte

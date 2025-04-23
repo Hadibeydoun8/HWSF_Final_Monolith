@@ -29,7 +29,7 @@ public:
         );
 
         // Setup serial connection to the joystick controller
-        tty_fd_ = open("/dev/ttyACM1", O_RDWR | O_NONBLOCK);
+        tty_fd_ = open("/dev/ttyACM0", O_RDWR | O_NONBLOCK);
         if (tty_fd_ < 0) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open serial port.");
             throw std::runtime_error("Failed to open serial port.");
@@ -62,6 +62,7 @@ public:
 private:
     ControllerDataUnion u_controller_d{};
     bool dance_mode_ = false;
+    bool rouge_mode_ = false;
     robot_interfaces::msg::WiskerData last_wisker_;
     rclcpp::Subscription<robot_interfaces::msg::WiskerData>::SharedPtr wisker_sub_;
 
@@ -69,7 +70,7 @@ private:
      * Convert joystick value to motor speed (0–100)
      * Also outputs direction based on sign of offset from center
      */
-    int32_t map_joystick_to_speed(int16_t val, bool &dir, bool flip) {
+    static int32_t map_joystick_to_speed(const int16_t val, bool &dir, const bool flip) {
         constexpr int CENTER = 512;
         constexpr int DEADZONE_MIN = 500;
         constexpr int DEADZONE_MAX = 520;
@@ -106,14 +107,20 @@ private:
                 robot_interfaces::msg::RobotControl msg;
 
                 // Enable dance mode when enough whiskers have triggered
-                if (!dance_mode_ && last_wisker_.wisker_count >= 10) {
-                    dance_mode_ = true;
+                if (last_wisker_.wisker_count >= 10) {
+                    rouge_mode_ = true;
                     RCLCPP_INFO(this->get_logger(), "DANCE MODE ACTIVATED! Wisker count = %d", last_wisker_.wisker_count);
                 }
 
-                // Manual override to disable dance mode
+                if (input.left)
+                {
+                    dance_mode_ = true;
+                }
+
+                // Manual override to disable dance mode and rouge mode
                 if (dance_mode_ && input.control) {
                     dance_mode_ = false;
+                    rouge_mode_ = false;
                     RCLCPP_INFO(this->get_logger(), "Dance mode deactivated via control button.");
                 }
 
@@ -144,6 +151,8 @@ private:
 
                 msg.dance_mode = dance_mode_;
 
+                msg.rouge_mode = rouge_mode_;
+
                 // Publish the final command
                 publisher_->publish(msg);
 
@@ -169,7 +178,7 @@ private:
     int tty_fd_;
 };
 
-int main(int argc, char* argv[]) {
+int main(const int argc, char* argv[]) {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<MotorPublisherNode>());
     rclcpp::shutdown();

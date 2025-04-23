@@ -5,3 +5,4 @@ bool left_dir
 bool right_dir
 
 bool dance_mode
+bool rouge_mode

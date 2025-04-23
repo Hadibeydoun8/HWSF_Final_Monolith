@@ -3,7 +3,7 @@
   <component name="CMakePythonSetting">
     <option name="pythonIntegrationState" value="YES" />
   </component>
-  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$/ros2_ws/src/robot_control">
+  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$/ros2_ws/src/robot_driver">
     <contentRoot DIR="$PROJECT_DIR$" />
   </component>
   <component name="CidrRootsConfiguration">

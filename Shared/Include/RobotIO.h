@@ -57,6 +57,7 @@ struct __attribute__((packed)) RobotControl {
   bool right_motor_dir;
 
   bool dance_mode;            // true = engage dance mode behavior
+  bool rouge_mode;            // true = engage rouge mode behavior
 };
 
 //---------------------------------------------
@@ -92,5 +93,5 @@ static_assert(sizeof(ControllerData) == 9, "Controller Data size mismatch");
 // 2 int16_t (4 bytes) + 5 bools (1 byte if packed tightly) = 9 bytes
 static_assert(sizeof(ControllerDataUnion) == 9, "ControllerDataUnion size mismatch");
 
-static_assert(sizeof(RobotControlUnion) == 7, "RobotControl size mismatch");
+static_assert(sizeof(RobotControlUnion) == 8, "RobotControl size mismatch");
 // 2 int16_t (4 bytes) + 3 bools (assuming packed to 1 byte) = 7 bytes
