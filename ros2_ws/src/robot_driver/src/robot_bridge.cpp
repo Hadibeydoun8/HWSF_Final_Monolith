@@ -50,7 +50,7 @@ public:
 
         // Run periodic task every 200ms to write motor control & read whiskers
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(150),
+            std::chrono::milliseconds(100),
             [this] {
                 write_control_data();    // Send last motor command to MCU
                 read_wisker_data();      // Read latest whisker state from MCU
