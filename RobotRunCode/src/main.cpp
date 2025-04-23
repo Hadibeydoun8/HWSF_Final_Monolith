@@ -13,7 +13,7 @@ Romi_Motor_Power left_motor;
 Romi_Motor_Power right_motor;
 
 unsigned long last_wisker_send = 0;         // Timestamp of last whisker data send
-constexpr unsigned long WISKER_INTERVAL = 200;  // Send whisker data every 200 ms
+constexpr unsigned long WISKER_INTERVAL = 100;  // Send whisker data every 200 ms
 
 
 WiskerDataUnion b_wisker_data{};            // Current whisker state
@@ -82,27 +82,27 @@ void loop() {
         }
     }
 
-    // Perform autonomous movement when in dance mode
-    if (b_robot_control.robot_control.dance_mode) {
-        unsigned long t = millis() % 2000;  // Cycle every 2 seconds
-
-        if (t < 500) {
-            left_motor.directionForward();
-            right_motor.directionBackward();
-        } else if (t < 1000) {
-            left_motor.directionBackward();
-            right_motor.directionForward();
-        } else if (t < 1500) {
-            left_motor.directionForward();
-            right_motor.directionForward();
-        } else {
-            left_motor.directionBackward();
-            right_motor.directionBackward();
-        }
-
-        left_motor.setSpeed(70);
-        right_motor.setSpeed(70);
-    }
+    // // Perform autonomous movement when in dance mode
+    // if (b_robot_control.robot_control.dance_mode) {
+    //     unsigned long t = millis() % 2000;  // Cycle every 2 seconds
+    //
+    //     if (t < 500) {
+    //         left_motor.directionForward();
+    //         right_motor.directionBackward();
+    //     } else if (t < 1000) {
+    //         left_motor.directionBackward();
+    //         right_motor.directionForward();
+    //     } else if (t < 1500) {
+    //         left_motor.directionForward();
+    //         right_motor.directionForward();
+    //     } else {
+    //         left_motor.directionBackward();
+    //         right_motor.directionBackward();
+    //     }
+    //
+    //     left_motor.setSpeed(70);
+    //     right_motor.setSpeed(70);
+    // }
 
     // Periodically send whisker sensor data to ROS
     unsigned long now = millis();

@@ -39,7 +39,7 @@ void loop() {
     Serial.write(0xAA);  // SYNC_BYTE: start of packet for framing
     Serial.write(reinterpret_cast<uint8_t *>(&b_controller_data), sizeof(ControllerData));  // Send packed data
 
-    delay(300);  // Throttle update rate to ~3 Hz
+    delay(100);  // Throttle update rate to ~3 Hz
 }
 
 void read_controller_data() {

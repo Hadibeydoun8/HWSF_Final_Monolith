@@ -118,7 +118,7 @@ private:
                 }
 
                 // Manual override to disable dance mode and rouge mode
-                if (dance_mode_ && input.control) {
+                if (input.control) {
                     dance_mode_ = false;
                     rouge_mode_ = false;
                     RCLCPP_INFO(this->get_logger(), "Dance mode deactivated via control button.");
