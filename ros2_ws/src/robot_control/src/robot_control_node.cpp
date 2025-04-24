@@ -25,7 +25,7 @@ public:
         // Subscribes to whisker sensor input to decide when to dance
         wisker_sub_ = this->create_subscription<robot_interfaces::msg::WiskerData>(
             "wisker_data", 10,
-            std::bind(&MotorPublisherNode::wisker_callback, this, std::placeholders::_1)
+            [this](auto && PH1) { wisker_callback(std::forward<decltype(PH1)>(PH1)); }
         );
 
         // Setup serial connection to the joystick controller
@@ -51,7 +51,7 @@ public:
 
         // Timer for polling joystick input at 50ms interval
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(100),
+            std::chrono::milliseconds(50),
             [this] { poll_serial(); });
     }
 

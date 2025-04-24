@@ -17,6 +17,7 @@ find_package(robot_interfaces REQUIRED)
 
 # Executable
 add_executable(robot_control_node src/robot_control_node.cpp)
+add_executable(compass_control_node src/compass_control_node.cpp)
 
 # Link dependencies
 ament_target_dependencies(robot_control_node
@@ -25,9 +26,16 @@ ament_target_dependencies(robot_control_node
         robot_interfaces
 )
 
+ament_target_dependencies(compass_control_node
+        rclcpp
+        geometry_msgs
+        robot_interfaces
+)
+
 # Install target
 install(TARGETS
         robot_control_node
+        compass_control_node
         DESTINATION lib/${PROJECT_NAME}
 )
 
