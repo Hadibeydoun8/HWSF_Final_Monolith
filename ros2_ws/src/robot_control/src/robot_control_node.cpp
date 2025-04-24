@@ -107,7 +107,7 @@ private:
                 robot_interfaces::msg::RobotControl msg;
 
                 // Enable dance mode when enough whiskers have triggered
-                if (last_wisker_.wisker_count >= 10) {
+                if (last_wisker_.wisker_count >= 5) {
                     rouge_mode_ = true;
                     RCLCPP_INFO(this->get_logger(), "DANCE MODE ACTIVATED! Wisker count = %d", last_wisker_.wisker_count);
                 }
