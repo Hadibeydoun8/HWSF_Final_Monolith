@@ -84,36 +84,58 @@ void loop() {
 
     // Periodically send whisker sensor data to ROS
     unsigned long now = millis();
+    read_wisker_data();  // Poll sensors and update count
     if (now - last_wisker_send >= WISKER_INTERVAL) {
         last_wisker_send = now;
-
-        read_wisker_data();  // Poll sensors and update count
-
         Serial.write(SYNC_BYTE);                                 // Frame header
         Serial.write(b_wisker_data.data, sizeof(b_old_wisker_data.data));  // Send binary struct
     }
 }
 
 void read_wisker_data() {
-    b_old_wisker_data = b_wisker_data;  // Save previous state
+    static unsigned long last_debounce_time[6] = {0};   // Last change time for each whisker
+    static bool debounced_state[6] = {1,1,1,1,1,1};      // Initial states (PULLUP logic = HIGH)
+    const unsigned long DEBOUNCE_DELAY = 50;            // 50 ms debounce period
 
-    // Read all six whisker inputs
-    b_wisker_data.wisker_data.w1 = digitalRead(BP_SW_PIN_0);
-    b_wisker_data.wisker_data.w2 = digitalRead(BP_SW_PIN_1);
-    b_wisker_data.wisker_data.w3 = digitalRead(BP_SW_PIN_2);
-    b_wisker_data.wisker_data.w4 = digitalRead(BP_SW_PIN_3);
-    b_wisker_data.wisker_data.w5 = digitalRead(BP_SW_PIN_4);
-    b_wisker_data.wisker_data.w6 = digitalRead(BP_SW_PIN_5);
+    // Raw reads
+    int current_state[6] = {
+        digitalRead(BP_SW_PIN_0),
+        digitalRead(BP_SW_PIN_1),
+        digitalRead(BP_SW_PIN_2),
+        digitalRead(BP_SW_PIN_3),
+        digitalRead(BP_SW_PIN_4),
+        digitalRead(BP_SW_PIN_5)
+    };
 
-    // Increment trigger counter for newly pressed whiskers
-    if (b_wisker_data.wisker_data.w1 != b_old_wisker_data.wisker_data.w1 && !b_wisker_data.wisker_data.w1) c_wisker_triggers++;
-    if (b_wisker_data.wisker_data.w2 != b_old_wisker_data.wisker_data.w2 && !b_wisker_data.wisker_data.w2) c_wisker_triggers++;
-    if (b_wisker_data.wisker_data.w3 != b_old_wisker_data.wisker_data.w3 && !b_wisker_data.wisker_data.w3) c_wisker_triggers++;
-    if (b_wisker_data.wisker_data.w4 != b_old_wisker_data.wisker_data.w4 && !b_wisker_data.wisker_data.w4) c_wisker_triggers++;
-    if (b_wisker_data.wisker_data.w5 != b_old_wisker_data.wisker_data.w5 && !b_wisker_data.wisker_data.w5) c_wisker_triggers++;
-    if (b_wisker_data.wisker_data.w6 != b_old_wisker_data.wisker_data.w6 && !b_wisker_data.wisker_data.w6) c_wisker_triggers++;
+    unsigned long now = millis();
 
-    b_wisker_data.wisker_data.wisker_count = c_wisker_triggers;  // Update total whisker hits
+    for (int i = 0; i < 6; i++) {
+        // Debounce logic: if state changed and stayed changed long enough
+        if (current_state[i] != debounced_state[i]) {
+            if (now - last_debounce_time[i] > DEBOUNCE_DELAY) {
+                // Count only on falling edge (pressed: HIGH → LOW)
+                if (current_state[i] == LOW) {
+                    c_wisker_triggers++;
+                }
+
+                // Accept new state
+                debounced_state[i] = current_state[i];
+            }
+        } else {
+            last_debounce_time[i] = now; // Reset timer if no change
+        }
+    }
+
+    // Update struct from debounced values
+    b_old_wisker_data = b_wisker_data;
+    b_wisker_data.wisker_data.w1 = debounced_state[0];
+    b_wisker_data.wisker_data.w2 = debounced_state[1];
+    b_wisker_data.wisker_data.w3 = debounced_state[2];
+    b_wisker_data.wisker_data.w4 = debounced_state[3];
+    b_wisker_data.wisker_data.w5 = debounced_state[4];
+    b_wisker_data.wisker_data.w6 = debounced_state[5];
+
+    b_wisker_data.wisker_data.wisker_count = c_wisker_triggers;
 }
 
 void dance_mode() {
